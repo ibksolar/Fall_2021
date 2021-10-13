@@ -19,6 +19,7 @@ layer_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_
 pred_files = get_filenames(pred_path, 'predictions','echo','.mat',struct('recursive',true));
 
 all_cost = [];
+debug_plot = false;
 
 for img_idx = 1:length(pred_files)
     
@@ -42,6 +43,7 @@ for img_idx = 1:length(pred_files)
     
     % Select only finite layers
     fin_idx = find( ~all(isnan(layer')) ); % Layers with finite values
+    
     % Remove all non_valid layers in ground truth?
     mod_layer = layer(fin_idx,:);
     
@@ -53,9 +55,7 @@ for img_idx = 1:length(pred_files)
     % Question: What happens if the prediction is NaN whereas Ground truth
     % is finite??
     
-    % Answer: Whenever either prediction or ground truth is NaN, both cases
-    % are exempted from loss calculation ( Should probably have another
-    % metric to indicate when a prediction is NaN for a valid GT )
+    % Answer: Updated to use the previous layer as the prediction
        
     if  0      
       mod_layer = layer;
@@ -70,9 +70,11 @@ for img_idx = 1:length(pred_files)
     [~,Nl] = max( max(layer,[],2) ); % Number of layers(Nl) x Slow time(Nx)
     [Nx,Nt] = size(mod_layer);
     
-    % Plot image with overlaid ground truth
-    figure(100);
-    imagesc(echo.echo_tmp); colormap(1-gray(256)); hold on; plot(mod_layer','b-','linewidth',1.5);
+    if debug_plot
+      % Plot image with overlaid ground truth
+      figure(100);
+      imagesc(echo.echo_tmp); colormap(1-gray(256)); hold on; plot(mod_layer','b-','linewidth',1.5);
+    end
     
     pos = 0;
     cost_per_frame = [];
@@ -114,13 +116,13 @@ for img_idx = 1:length(pred_files)
               keyboard
             end
             
-            figure(100); hold on; plot(curr_pred_vals,'r*');
-            title(sprintf('Predict layer %d, Error: %2.2f(MAE pixels) compared to layer %d',lay_idx,cost_per_frame(end), pos))
-            
+            if debug_plot
+              figure(100); hold on; plot(curr_pred_vals,'r*');
+              title(sprintf('Predict layer %d, Error: %2.2f(MAE pixels) compared to layer %d',lay_idx,cost_per_frame(end), pos))
+            end
 
         end        
-    end
-    
+    end    
     all_cost(end+1) = sum(cost_per_frame);
     
 end
