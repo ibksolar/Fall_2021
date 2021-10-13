@@ -16,7 +16,6 @@ pred_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_2
 echo_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_21/image';
 layer_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_21/layer';
 
-
 pred_files = get_filenames(pred_path, 'predictions','echo','.mat',struct('recursive',true));
 
 all_cost = [];
@@ -44,7 +43,7 @@ for img_idx = 1:length(pred_files)
     % Select only finite layers
     fin_idx = find( ~all(isnan(layer')) ); % Layers with finite values
     % Remove all non_valid layers in ground truth?
-    mod_layer = mod_layer(fin_idx,:);
+    mod_layer = layer(fin_idx,:);
     
     
     %% Options of what to do to get accurately compare with NaN ground truth: 
@@ -80,7 +79,13 @@ for img_idx = 1:length(pred_files)
     
     for lay_idx = 1:size(pred_vals,1)
 
-        curr_pred_vals = pred_vals(lay_idx,:);  
+        curr_pred_vals = pred_vals(lay_idx,:); 
+        
+        if ~all(isnan(curr_pred_vals)) && any(isnan(curr_pred_vals)) && lay_idx ~=1
+          pred_nan_idx = isnan(curr_pred_vals);
+          curr_pred_vals(pred_nan_idx) = pred_vals(lay_idx-1,pred_nan_idx);
+        end
+          
         
         % Decide when to stop ( When prediction is greater than max in ground truth ) 
         if nanmean( curr_pred_vals) >= nanmean(mod_layer(end,:))
@@ -88,20 +93,26 @@ for img_idx = 1:length(pred_files)
           break;
         end
         
-        if ~all(isnan(curr_pred_vals))
+        if ~all(isnan(curr_pred_vals))                    
             
             % Compare current predicted layer with all the layers in the ground truth
-            res1 = abs(repmat(pred_vals(lay_idx,:),Nx,1) - mod_layer);
+            res1 = abs(repmat(curr_pred_vals,Nx,1) - mod_layer);
             
             if any( any(isnan(res1),2) )
                 nan_idx = isnan(res1); 
                 
                 % Set NaN values to very large number
-                res1(nan_idx,:) = 1e6;               
+                res1(nan_idx) = 1e12;               
             end
             
             res2 = nanmean(res1,2);            
-            [cost_per_frame(end+1) ,pos] = min(res2);  
+            [cost_per_frame(end+1) ,pos] = min(res2);
+            cost_per_frame(end) = cost_per_frame(end)/size(pred_vals,2); % Should this be divided by Nx to get the mean?
+            
+            if lay_idx ~= pos
+              % Something is wrong
+              keyboard
+            end
             
             figure(100); hold on; plot(curr_pred_vals,'r*');
             title(sprintf('Predict layer %d, Error: %2.2f(MAE pixels) compared to layer %d',lay_idx,cost_per_frame(end), pos))
