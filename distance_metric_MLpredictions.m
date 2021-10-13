@@ -74,9 +74,11 @@ for img_idx = 1:length(pred_files)
         if ~all(isnan(curr_pred_vals))
             res1 = abs(repmat(pred_vals(lay_idx,:),Nx,1) - mod_layer);
             
-            if any (all(isnan(res1')))
-                nan_idx = find(all(isnan(res1')));            
-                res1(nan_idx,:) = 1e6;               
+            if any (all(isnan(res1),2))                
+                nan_idx = isnan(res1);
+                
+                % Set NaN values to large
+                res1(nan_idx) = 1e12;               
             end
             
             res2 = nanmean(res1,2);            
