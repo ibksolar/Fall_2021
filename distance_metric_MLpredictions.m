@@ -6,8 +6,7 @@ clearvars -except AdditionalPaths gRadar;
 clc;
 
 % pred_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/new_echo_cnn_in_out_jstarrs2021_first_try'; 
-% echo_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/new_echo_cnn_in_out_jstarrs2021_first_try/image';
-% layer_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/new_echo_cnn_in_out_jstarrs2021_first_try/layer';
+% echo_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/new_echo_cnn_in_out_jstarrs2021_first_try/image';% layer_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/new_echo_cnn_in_out_jstarrs2021_first_try/layer';
 
 % Prediction files created from Winproc
 pred_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_21/predictions';
@@ -19,7 +18,7 @@ layer_path = '/cresis/snfs1/scratch/ibikunle/Python_Env/final_layers_rowblock15_
 pred_files = get_filenames(pred_path, 'predictions','echo','.mat',struct('recursive',true));
 
 all_cost = [];
-debug_plot = false;
+debug_plot = 1; %false;
 
 for img_idx = 1:length(pred_files)
     
@@ -55,17 +54,7 @@ for img_idx = 1:length(pred_files)
     % Question: What happens if the prediction is NaN whereas Ground truth
     % is finite??
     
-    % Answer: Updated to use the previous layer as the prediction
-       
-    if  0      
-      mod_layer = layer;
-      for iter_idx = fin_idx
-        if any(isnan(layer(iter_idx,:)))
-          mod_layer(iter_idx,:) = interp_finite(layer(iter_idx,:));
-          %             temp1(isnan(temp1)) = round(mean(temp1));
-        end
-      end      
-    end
+    % Answer: Updated to use the previous layer as the prediction     
 
     [~,Nl] = max( max(layer,[],2) ); % Number of layers(Nl) x Slow time(Nx)
     [Nx,Nt] = size(mod_layer);
@@ -78,6 +67,7 @@ for img_idx = 1:length(pred_files)
     
     pos = 0;
     cost_per_frame = [];
+    gt_layer_idx = []; % Ground Truth layer idx
     
     for lay_idx = 1:size(pred_vals,1)
 
@@ -89,36 +79,35 @@ for img_idx = 1:length(pred_files)
         end
           
         
-        % Decide when to stop ( When prediction is greater than max in ground truth ) 
-        if nanmean( curr_pred_vals) >= nanmean(mod_layer(end,:))
-          keyboard
-          break;
-        end
-        
         if ~all(isnan(curr_pred_vals))                    
             
             % Compare current predicted layer with all the layers in the ground truth
             res1 = abs(repmat(curr_pred_vals,Nx,1) - mod_layer);
             
-            if any( any(isnan(res1),2) )
-                nan_idx = isnan(res1); 
-                
-                % Set NaN values to very large number
-                res1(nan_idx) = 1e12;               
-            end
+%             if any( any(isnan(res1),2) )
+%                 nan_idx = isnan(res1);                
+%                 % Set NaN values to very large number
+%                 res1(nan_idx) = 1e12;               
+%             end
             
             res2 = nanmean(res1,2);            
-            [cost_per_frame(end+1) ,pos] = min(res2);
-            cost_per_frame(end) = cost_per_frame(end)/size(pred_vals,2); % Should this be divided by Nx to get the mean?
+            [error_val ,pos] = nanmin(res2);
             
-            if lay_idx ~= pos
-              % Something is wrong
-              keyboard
-            end
+            if ~ismember(pos,gt_layer_idx)
+              gt_layer_idx(end+1) = pos;              
+              cost_per_frame(end+1) = error_val/size(pred_vals,1); % Should this be divided by Nx to get the mean?     
             
+            else
+              % The ground truth layer has been assigned to a previous prediction
+              % layer: Resolve by choosing the prediction with the lowest error              
+              if error_val < cost_per_frame(pos)
+                cost_per_frame(pos) = error_val;              
+              end
+            end         
+                   
             if debug_plot
               figure(100); hold on; plot(curr_pred_vals,'r*');
-              title(sprintf('Predict layer %d, Error: %2.2f(MAE pixels) compared to layer %d',lay_idx,cost_per_frame(end), pos))
+              title(sprintf('Image %d: Predict layer %d, Error: %2.2f(MAE pixels) compared to layer %d',img_idx,lay_idx,cost_per_frame(end), pos))
             end
 
         end        
