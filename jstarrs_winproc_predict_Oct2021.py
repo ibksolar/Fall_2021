@@ -15,14 +15,23 @@ InteractiveShell.ast_node_interactivity = "all"
 
 
 # Path to data
-base_echo_path = r'Y:\ibikunle\Python_Project\Fall_2021\all_block_data'  # < == FIX HERE e.g os.path.join( os.getcwd(), echo_path )
-echo_path = base_echo_path + 'Dec_block_len_45_Test_set191021'  #  < == FIX HERE e.g Full_block_len_45_280921_1530'
-
+base_echo_path = r'Y:\ibikunle\Python_Project\Fall_2021\all_block_data'  # < == FIX HERE e.g os.path.join( os.getcwd(), echo_path ),'Y:\ibikunle\Python_Env\final_layers_rowblock15_21'
+echo_path = base_echo_path + '\Dec_block_len_21_Test_set_221021_1355'  #  < == FIX HERE e.g Full_block_len_45_280921_1530'
 
 # Path to model
-model_path = r'Y:\ibikunle\Python_Env\jstars_weight_21_15_filtered_image_july2021.h5'  #  < == FIX HERE
+model_path = r'Y:\ibikunle\Python_Env\jstars_weight_21_15_july2021_resaved.h5'  ##  <== FIX HERE e.g Y:\ibikunle\Python_Env\jstars_weight_21_15_filtered_image_july2021.h5'  
 
-# Defaults
+# Check paths
+if os.path.isfile(model_path) and os.path.isdir(echo_path):
+    print('Paths are okay')
+else:
+    if not os.path.isfile(model_path):
+        print(f' Model path {model_path} is broken')
+    if not os.path.isdir(echo_path):
+        print(f'Echo path {echo_path} is broken')
+        
+        
+# Default setting
 save_predictions = True
 custom_normalize = False
 plot_layers = False
@@ -41,7 +50,15 @@ all_layer = glob.glob(echo_path + "/layer/*.mat")
 all_layer = sorted(all_layer)  
       
 
-filt_y = 45; filt_x = 15
+# Check if the echo and layer idxs align
+if os.path.basename(all_echo[0]) == os.path.basename(all_layer[0]):
+    print('Data is well sorted')
+else:
+    print(f'There is a mis-match between Echogram{all_echo[0]} and Layer {all_layer[0]}')
+
+
+filt_y = 21 #45;
+filt_x = 15
 conv_filter = np.zeros([filt_y, filt_x])
 all_len = filt_y * filt_x
 
